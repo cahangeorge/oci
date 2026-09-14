@@ -64,7 +64,8 @@ COPY . /var/www/html
 
 # Install production dependencies only
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
-RUN composer install --no-dev --optimize-autoloader --no-interaction \
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-progress \
+    || composer install --prefer-source --no-dev --optimize-autoloader --no-interaction --no-progress \
     && composer clear-cache \
     && rm /usr/bin/composer
 
