@@ -1,8 +1,7 @@
 # ─── OCI Cookie Scanner ──────────────────────────────────
 # Self-contained scanning server with:
 #   - Website Evidence Collector (WEC) from EU EDPS
-#   - Pinned Chrome-for-Testing (not Debian's rolling `chromium` package, whose
-#     v150 build SIGILLs on some hosts — installed via @puppeteer/browsers below)
+#   - Debian Chromium for native ARM64 support
 #   - Node.js API server
 #
 # Deploy alongside the main app or on separate servers.
@@ -14,11 +13,11 @@
 
 FROM node:20-slim
 
-# Chrome runtime libraries + fonts. We DON'T install the distro `chromium`
-# package (its rolling v150 build crashes with SIGILL on some CPUs); instead we
-# fetch a pinned Chrome-for-Testing binary below and ship the libs it needs.
+# Chromium + runtime libraries and fonts. Chrome-for-Testing does not publish a
+# Linux ARM64 binary, so the scanner uses Debian's native Chromium package.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
+    chromium \
     curl \
     fonts-liberation \
     fonts-noto-color-emoji \
@@ -51,20 +50,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     xdg-utils \
     && rm -rf /var/lib/apt/lists/*
 
-# Install a pinned, automation-QA'd Chrome-for-Testing build and expose it at a
-# stable path. `chrome@stable` resolves to the current Chrome-for-Testing stable
-# channel (tested for headless automation — unlike the Debian package that
-# SIGILL'd). Pin an explicit version (e.g. chrome@131.0.6778.204) for fully
-# reproducible builds. The trailing `--version` fails the build early if the
-# binary or a shared library is missing.
-RUN npx --yes @puppeteer/browsers install chrome@stable --path /opt/chrome \
-    && ln -sf "$(find /opt/chrome -type f -name chrome -path '*chrome-linux64*' | head -n1)" /usr/local/bin/chrome \
-    && /usr/local/bin/chrome --version
-
-# Point Puppeteer at the pinned Chrome (puppeteer-core never downloads its own).
+# Point Puppeteer at the system Chromium (puppeteer-core never downloads one).
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
-    PUPPETEER_EXECUTABLE_PATH=/usr/local/bin/chrome \
-    CHROMIUM_PATH=/usr/local/bin/chrome
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
+    CHROMIUM_PATH=/usr/bin/chromium
 
 # Create app directory
 WORKDIR /opt/scanner
