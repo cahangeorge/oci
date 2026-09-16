@@ -9,13 +9,15 @@ use PHPMailer\PHPMailer\SMTP;
 use Psr\Log\LoggerInterface;
 
 /**
- * Thin wrapper around PHPMailer.
+ * Email delivery wrapper supporting SMTP and Resend's HTTPS API.
  *
  * SMTP credentials come from one of two sources, resolved lazily on first send:
  *  - Endpointr vault entry (when ENDPOINTR_API_KEY is set) — name configurable
  *    via ENDPOINTR_SMTP_VAULT_NAME, default `amazon_ses`.
  *  - MAIL_HOST / MAIL_PORT / MAIL_USERNAME / MAIL_PASSWORD / MAIL_ENCRYPTION
  *    env vars (used in dev with Mailpit; also the fallback if a vault fetch fails).
+ *
+ * Set MAIL_TRANSPORT=resend to use RESEND_API_KEY over HTTPS instead of SMTP.
  *
  * MAIL_FROM_ADDRESS / MAIL_FROM_NAME always come from env (the vault stores
  * delivery credentials, not branding).
@@ -28,13 +30,16 @@ final class MailerService
     private string $fromAddress;
     private string $fromName;
     private bool $debug = false;
+    private ResendApiClient $resend;
 
     public function __construct(
         private readonly LoggerInterface $logger,
         private readonly EndpointrClient $endpointr,
+        ?ResendApiClient $resend = null,
     ) {
         $this->fromAddress = $_ENV['MAIL_FROM_ADDRESS'] ?? 'support@getconzent.com';
         $this->fromName = $_ENV['MAIL_FROM_NAME'] ?? 'Conzent';
+        $this->resend = $resend ?? new ResendApiClient();
     }
 
     public function setDebug(bool $debug): void
@@ -55,6 +60,22 @@ final class MailerService
      */
     public function send(string $to, string $subject, string $htmlBody, string $textBody = ''): bool
     {
+        $transport = strtolower(trim((string) ($_ENV['MAIL_TRANSPORT'] ?? 'smtp')));
+
+        if ($transport === 'resend') {
+            return $this->sendViaResend($to, $subject, $htmlBody, $textBody);
+        }
+
+        if ($transport !== 'smtp') {
+            $this->logger->error('Email not sent: unsupported mail transport.', [
+                'transport' => $transport,
+                'to' => $to,
+                'subject' => $subject,
+            ]);
+
+            return false;
+        }
+
         $cfg = $this->resolveConfig();
 
         // No SMTP configured — say so plainly instead of failing deep inside
@@ -76,6 +97,8 @@ final class MailerService
             $mail->Host = $cfg['host'];
             $mail->Port = $cfg['port'];
             $mail->CharSet = PHPMailer::CHARSET_UTF8;
+            $mail->Timeout = $this->mailTimeout();
+            $mail->getSMTPInstance()->Timelimit = $mail->Timeout;
 
             if ($this->debug) {
                 $mail->SMTPDebug = SMTP::DEBUG_SERVER;
@@ -136,6 +159,57 @@ final class MailerService
 
             return false;
         }
+    }
+
+    private function sendViaResend(string $to, string $subject, string $htmlBody, string $textBody): bool
+    {
+        $apiKey = trim((string) ($_ENV['RESEND_API_KEY'] ?? ''));
+        if ($apiKey === '') {
+            $this->logger->error('Email not sent: RESEND_API_KEY is not configured.', [
+                'to' => $to,
+                'subject' => $subject,
+            ]);
+
+            return false;
+        }
+
+        $fromName = trim(str_replace(["\r", "\n"], ' ', $this->fromName));
+        $from = $fromName !== '' ? "{$fromName} <{$this->fromAddress}>" : $this->fromAddress;
+        $text = $textBody !== '' ? $textBody : $this->htmlToText($htmlBody);
+
+        try {
+            $emailId = $this->resend->send($apiKey, [
+                'from' => $from,
+                'to' => [$to],
+                'subject' => $subject,
+                'html' => $htmlBody,
+                'text' => $text,
+                'reply_to' => $this->fromAddress,
+            ], $this->mailTimeout());
+
+            $this->logger->info('Email sent', [
+                'to' => $to,
+                'subject' => $subject,
+                'source' => 'resend_api',
+                'email_id' => $emailId,
+            ]);
+
+            return true;
+        } catch (\Throwable $e) {
+            $this->logger->error('Email failed', [
+                'to' => $to,
+                'subject' => $subject,
+                'source' => 'resend_api',
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
+
+    private function mailTimeout(): int
+    {
+        return max(1, min(55, (int) ($_ENV['MAIL_TIMEOUT'] ?? 15)));
     }
 
     /**

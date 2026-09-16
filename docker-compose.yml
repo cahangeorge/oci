@@ -35,10 +35,13 @@ services:
       - DATABASE_URL=${DATABASE_URL:-mysql://oci:oci@mariadb:3306/oci?charset=utf8mb4}
       - REDIS_URL=${REDIS_URL:-redis://redis:6379}
       - MAIL_HOST=${MAIL_HOST:-}
+      - MAIL_TRANSPORT=${MAIL_TRANSPORT:-smtp}
+      - MAIL_TIMEOUT=${MAIL_TIMEOUT:-15}
       - MAIL_PORT=${MAIL_PORT:-587}
       - MAIL_USERNAME=${MAIL_USERNAME:-}
       - MAIL_PASSWORD=${MAIL_PASSWORD:-}
       - MAIL_ENCRYPTION=${MAIL_ENCRYPTION:-tls}
+      - RESEND_API_KEY=${RESEND_API_KEY:-}
       - MAIL_FROM_ADDRESS=${MAIL_FROM_ADDRESS:-}
       - MAIL_FROM_NAME=${MAIL_FROM_NAME:-Conzent}
       - CMP_ID=${CMP_ID:-}
@@ -103,10 +106,13 @@ services:
       - SCANNER_API_KEY=${SCANNER_API_KEY:-}
       - SCANNER_CALLBACK_URL=${SCANNER_CALLBACK_URL:-}
       - MAIL_HOST=${MAIL_HOST:-}
+      - MAIL_TRANSPORT=${MAIL_TRANSPORT:-smtp}
+      - MAIL_TIMEOUT=${MAIL_TIMEOUT:-15}
       - MAIL_PORT=${MAIL_PORT:-587}
       - MAIL_USERNAME=${MAIL_USERNAME:-}
       - MAIL_PASSWORD=${MAIL_PASSWORD:-}
       - MAIL_ENCRYPTION=${MAIL_ENCRYPTION:-tls}
+      - RESEND_API_KEY=${RESEND_API_KEY:-}
       - MAIL_FROM_ADDRESS=${MAIL_FROM_ADDRESS:-}
       - MAIL_FROM_NAME=${MAIL_FROM_NAME:-Conzent}
     restart: unless-stopped
