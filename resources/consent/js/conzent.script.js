@@ -4705,7 +4705,7 @@ if (!window._cnzStandDown && typeof window._cnzMainLoaded === "undefined") {
 					 */
 
       reinit: () => {
-        ConzentFN("open");
+        conzentOpenBox();
       },
 
       /**

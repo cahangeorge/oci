@@ -26,7 +26,7 @@ final class CookieUpdateHandler implements RequestHandlerInterface
             return ApiResponse::error('Unauthorized', 401);
         }
 
-        $id = (int) ($request->getAttribute('route_params')['id'] ?? 0);
+        $id = (int) $request->getAttribute('id', 0);
         if ($id === 0) {
             return ApiResponse::error('Cookie ID is required');
         }
