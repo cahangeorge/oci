@@ -4084,7 +4084,7 @@ if (typeof window._cnzMainLoaded === "undefined") {
 					 */
 
       reinit: () => {
-        ConzentFN("open");
+        conzentOpenBox();
       },
 
       /**

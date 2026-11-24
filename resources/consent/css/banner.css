@@ -1820,3 +1820,7 @@ h2.conzent-preference-title {
   .cnz-wall .conzent-notice { max-height: 100vh; }
   .cnz-wall-footer .btn-wrap { flex-direction: column; }
 }
+
+.cnz-retention-ro { display: none; }
+html:lang(ro) .cnz-retention-ro { display: inline; }
+html:lang(ro) .cnz-retention-en { display: none; }

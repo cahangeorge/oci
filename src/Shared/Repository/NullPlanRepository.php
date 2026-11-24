@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace OCI\Shared\Repository;
 
-use OCI\Shared\Repository\PlanRepositoryInterface;
+use OCI\Identity\Repository\UserRepositoryInterface;
 
 /**
  * No-op plan repository for OCI self-hosted edition.
@@ -14,6 +14,10 @@ use OCI\Shared\Repository\PlanRepositoryInterface;
  */
 final class NullPlanRepository implements PlanRepositoryInterface
 {
+    public function __construct(
+        private readonly UserRepositoryInterface $userRepo,
+    ) {}
+
     public function isSubscribed(int $userId): bool
     {
         return true;
@@ -70,6 +74,7 @@ final class NullPlanRepository implements PlanRepositoryInterface
 
     public function getUserCompany(int $userId): ?array
     {
-        return null;
+        // Company profiles exist independently of the optional billing module.
+        return $this->userRepo->getUserCompany($userId);
     }
 }

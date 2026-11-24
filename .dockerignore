@@ -1,0 +1,14 @@
+.git
+.env
+.env.*
+.conzent-credentials
+docker-compose*.yml
+docker-compose*.yaml
+/vendor/
+/var/
+/node_modules/
+/.phpunit.cache/
+/public/sites_data/
+/backups/
+**/*.sql
+**/*.dump

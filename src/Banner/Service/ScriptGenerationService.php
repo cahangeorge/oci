@@ -399,15 +399,14 @@ final class ScriptGenerationService
 
                 // ── Load cookie categories per language ────────
                 foreach ($preferedLangs as $langIdKey => $langCode) {
-                    $userCatList = $this->loadUserCookieCategories($userId, $siteId, $langIdKey);
-                    $catListArr = [];
-                    foreach ($userCatList as $ccVal) {
-                        $catListArr[$ccVal['slug']][$langCode] = $ccVal;
-                    }
-
-                    $defaultCats = $this->loadDefaultCookieCategories($langIdKey);
-                    foreach ($defaultCats as $valItem) {
-                        $val = $catListArr[$valItem['slug']][$langCode] ?? $valItem;
+                    $siteCats = $this->loadUserCookieCategories($userId, $siteId, $langIdKey);
+                    // A site's assigned categories define its consent choices. Global
+                    // defaults are only a fallback for sites without assignments.
+                    $bannerCats = $this->selectBannerCategories(
+                        $siteCats,
+                        fn (): array => $this->loadDefaultCookieCategories($langIdKey),
+                    );
+                    foreach ($bannerCats as $val) {
 
                         $cookieTypesList[$val['slug']]['type'][$langCode] = $val['name'];
                         $cookieTypesList[$val['slug']]['name'][$langCode] = $val['name'];
@@ -1647,6 +1646,11 @@ final class ScriptGenerationService
         } catch (\Throwable) {
             return [];
         }
+    }
+
+    private function selectBannerCategories(array $siteCategories, callable $loadDefaults): array
+    {
+        return $siteCategories !== [] ? $siteCategories : $loadDefaults();
     }
 
     private function loadUserCookieCategories(int $userId, int $siteId, int $langId): array
